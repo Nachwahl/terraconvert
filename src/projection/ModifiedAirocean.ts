@@ -1,4 +1,5 @@
 import {ConformalEstimate} from "./ConformalEstimate";
+import {Airocean} from "./Airocean";
 
 export class ModifiedAirocean extends ConformalEstimate {
     protected static THETA = -150 * ModifiedAirocean.TO_RADIANS;
@@ -54,7 +55,7 @@ export class ModifiedAirocean extends ConformalEstimate {
 
         // check to make sure still in right part
         if (easia !== this.isEurasianPart(x, y))
-            throw Error("Out of bounds")
+            return Airocean.OUT_OF_BOUNDS;
 
         return super.toGeo(x, y);
 

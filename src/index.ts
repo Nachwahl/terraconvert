@@ -1,6 +1,31 @@
-import {GeographicProjection, Orientation} from "./projection/GeographicProjection";
+import GeographicProjection from "./projection/GeographicProjection";
 import {ModifiedAirocean} from "./projection/ModifiedAirocean";
 import {ScaleProjection} from "./projection/ScaleProjection";
+import {Orientation} from "./projection/Oriantation";
+import {UprightOrientation} from "./projection/UprightOrientation";
+import {InvertedOrientation} from "./projection/InvertedOrientation";
+
+const orientProjection = (base: GeographicProjection, o: Orientation): GeographicProjection => {
+    if (base.upright()) {
+        if (o === Orientation.upright)
+            return base;
+        base = new UprightOrientation(base);
+    }
+
+    if (o === Orientation.swapped) {
+        return new InvertedOrientation(base);
+    } else if (o === Orientation.upright) {
+        base = new UprightOrientation(base);
+    }
+
+    return base;
+}
+
+const projection: GeographicProjection = new ModifiedAirocean();
+const uprightProj: GeographicProjection = orientProjection(projection, Orientation.upright);
+const scaleProj: ScaleProjection = new ScaleProjection(uprightProj, 7318261.522857145, 7318261.522857145)
+
+
 
 /**
  * Converts real life coordinates to in-game coordinates
@@ -9,7 +34,8 @@ import {ScaleProjection} from "./projection/ScaleProjection";
  * @returns {[number, number]} - In-game coordinates [x, z]
  */
 export const fromGeo = (lat: number, lon: number): [number, number] => {
-    return [lat, lon];
+    const [x, z] = scaleProj.fromGeo(lon, lat);
+    return [x, z];
 }
 
 /**
@@ -19,13 +45,12 @@ export const fromGeo = (lat: number, lon: number): [number, number] => {
  * @returns {[number, number]} - Real life coordinates [latitude, longitude]
  */
 export const toGeo = (x: number, z: number): [number, number] => {
-    return [x, z];
+    const [lon, lat] = scaleProj.toGeo(x, z);
+    return [lat, lon];
 }
 
-const projection: GeographicProjection = new ModifiedAirocean();
-const uprightProj: GeographicProjection = GeographicProjection.orientProjection(projection, Orientation.upright);
-const scaleProj: ScaleProjection = new ScaleProjection(uprightProj, 7318261.522857145, 7318261.522857145)
 
-// tslint:disable-next-line:no-console
-console.log(scaleProj.toGeo(3231992, -5296639))
+
+
+
 

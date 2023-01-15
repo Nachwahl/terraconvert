@@ -1,5 +1,5 @@
 import {ProjectionTransform} from "./ProjectionTransform";
-import {GeographicProjection} from "./GeographicProjection";
+import GeographicProjection from "./GeographicProjection";
 
 export class UprightOrientation extends ProjectionTransform {
     constructor(input: GeographicProjection) {
@@ -7,7 +7,7 @@ export class UprightOrientation extends ProjectionTransform {
     }
 
     public toGeo(x: number, y: number): number[] {
-        return this.input.toGeo(x, y);
+        return this.input.toGeo(x, -y);
     }
 
     public fromGeo(lon: number, lat: number): number[] {

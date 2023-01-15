@@ -1,5 +1,5 @@
 import {ProjectionTransform} from "./ProjectionTransform";
-import {GeographicProjection} from "./GeographicProjection";
+import GeographicProjection from "./GeographicProjection";
 
 export class InvertedOrientation extends ProjectionTransform {
     constructor(input: GeographicProjection) {

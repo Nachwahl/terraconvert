@@ -18,6 +18,8 @@ export class ConformalEstimate extends Airocean {
         const conformalRaw = fs.readFileSync(path.resolve(__dirname, 'resources/conformal.txt'))
         const conformal = JSON.parse(conformalRaw.toString());
 
+        let counter = -1;
+
         for (let u = 0; u < xs.length; u++) {
             const px: number[] = new Array(xs.length - u);
             const py: number[] = new Array(xs.length - u);
@@ -27,9 +29,12 @@ export class ConformalEstimate extends Airocean {
 
         for (let v = 0; v < xs.length; v++) {
             for (let u = 0; u < xs.length - v; u++) {
-                const entry: number[] = conformal[u];
+                counter++;
+                const entry: number[] = conformal[counter];
+
                 xs[u][v] = entry[0] * this.VECTOR_SCALE_FACTOR;
                 ys[u][v] = entry[1] * this.VECTOR_SCALE_FACTOR;
+
             }
         }
 

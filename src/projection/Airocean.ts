@@ -1,4 +1,4 @@
-import {GeographicProjection} from "./GeographicProjection";
+import GeographicProjection from "./GeographicProjection";
 
 export class Airocean extends GeographicProjection {
     protected static ARC: number = 2 * Math.asin(Math.sqrt(5 - Math.sqrt(5)) / Math.sqrt(10));
@@ -157,7 +157,7 @@ export class Airocean extends GeographicProjection {
         const sinc: number = Math.sin(c)
         const cosc: number = Math.cos(c)
 
-        out[offset + 0] = cosa * cosb * cosc - sinc * sina;
+        out[offset] = cosa * cosb * cosc - sinc * sina;
         out[offset + 1] = -sina * cosb * cosc - sinc * cosa;
         out[offset + 2] = cosc * sinb;
 
@@ -215,6 +215,41 @@ export class Airocean extends GeographicProjection {
         20, 19, 15, 21, 16, -1, 17, 18, -1, -1, -1,
     ];
 
+    protected static findTriangleGrid(x: number, y: number) {
+        const xp = x / Airocean.ARC;
+        let yp = y / (Airocean.ARC * Airocean.ROOT3);
+
+        let row;
+
+        if (yp > -0.25) {
+            if (yp < 0.25) { // middle
+                row = 1;
+            } else if (yp <= 0.75) { // top
+                row = 0;
+                yp = 0.5 - yp; // translate to middle and flip
+            } else return -1;
+        } else if (yp >= -0.75) { // bottom
+            row = 2;
+            yp = -yp - 0.5; // translate to middle and flip
+        } else return -1;
+
+        yp += 0.25; // change origin to vertex 4, to allow grids to align
+
+        // rotate coords 45 degrees so left and right sides of the triangle become the x/y axies (also side lengths are now 1)
+        const xr = xp - yp;
+        const yr = xp + yp;
+
+        const gx = Math.trunc(Math.floor(xr));
+        const gy = Math.trunc(Math.floor(yr));
+
+        const col = 2 * gx + (gy !== gx ? 1 : 0) + 6;
+
+        if (col < 0 || col >= 11)
+            return -1;
+
+        return Airocean.FACE_ON_GRID[row * 11 + col];
+    }
+
 
     protected static readonly Z: number = Math.sqrt(5 + 2 * Math.sqrt(5)) / Math.sqrt(15);
     protected static readonly EL: number = Math.sqrt(8) / Math.sqrt(5 + Math.sqrt(5));
@@ -271,12 +306,99 @@ export class Airocean extends GeographicProjection {
 
         const z = 1 / Math.sqrt(1 + xpoZ * xpoZ + ypoZ * ypoZ);
 
-        return [z*xpoZ, z*ypoZ, z];
+        return [z * xpoZ, z * ypoZ, z];
     }
 
     protected inverseTriangleTransform(x: number, y: number): number[] {
         return this.inverseTriangleTransformNewton(x, y);
     }
 
+    public fromGeo(lon: number, lat: number): number[] {
+        lat = 90 - lat;
+        lon *= Airocean.TO_RADIANS;
+        lat *= Airocean.TO_RADIANS;
+
+        const sinphi = Math.sin(lat);
+
+        let x = Math.cos(lon) * sinphi;
+        const y = Math.sin(lon) * sinphi;
+        const z = Math.cos(lat);
+
+        let face = Airocean.findTriangle(x, y, z);
+
+        const off = 9 * face;
+        const xp = x * Airocean.ROTATION_MATRIX[off] + y * Airocean.ROTATION_MATRIX[off + 1] + z * Airocean.ROTATION_MATRIX[off + 2];
+        const yp = x * Airocean.ROTATION_MATRIX[off + 3] + y * Airocean.ROTATION_MATRIX[off + 4] + z * Airocean.ROTATION_MATRIX[off + 5];
+        const zp = x * Airocean.ROTATION_MATRIX[off + 6] + y * Airocean.ROTATION_MATRIX[off + 7] + z * Airocean.ROTATION_MATRIX[off + 8];
+
+        const out = this.triangleTransform(xp, yp, zp);
+
+        if (Airocean.FLIP_TRIANGLE[face] !== 0) {
+            out[0] = -out[0];
+            out[1] = -out[1];
+        }
+
+        x = out[0];
+
+        if (((face === 15 && x > out[1] * Airocean.ROOT3) || face === 14) && x > 0) {
+            out[0] = 0.5 * x - 0.5 * Airocean.ROOT3 * out[1];
+            out[1] = 0.5 * Airocean.ROOT3 * x + 0.5 * out[1];
+            face += 6; // shift 14->20 & 15->21
+        }
+
+        out[0] += Airocean.CENTER_MAP[face * 2];
+        out[1] += Airocean.CENTER_MAP[face * 2 + 1];
+
+        return out;
+    }
+
+
+    public static OUT_OF_BOUNDS: number[] = [0.0 / 0, 0.0 / 0];
+
+    public toGeo(x: number, y: number): number[] {
+        const face = Airocean.findTriangleGrid(x, y);
+
+        if (face === -1)
+            return Airocean.OUT_OF_BOUNDS;
+
+        x -= Airocean.CENTER_MAP[face * 2];
+        y -= Airocean.CENTER_MAP[face * 2 + 1];
+
+        switch (face) {
+            case 14:
+                if (x > 0) return Airocean.OUT_OF_BOUNDS;
+                break;
+
+            case 20:
+                if (-y * Airocean.ROOT3 > x) return Airocean.OUT_OF_BOUNDS;
+                break;
+
+            case 15:
+                if (x > 0 && x > y * Airocean.ROOT3) return Airocean.OUT_OF_BOUNDS;
+                break;
+
+            case 21:
+                if (x < 0 || -y * Airocean.ROOT3 > x) return Airocean.OUT_OF_BOUNDS;
+                break;
+        }
+
+        if (Airocean.FLIP_TRIANGLE[face] !== 0) {
+            x = -x;
+            y = -y;
+        }
+
+        const c = this.inverseTriangleTransform(x, y);
+        x = c[0];
+        y = c[1];
+        const z = c[2];
+
+        const off = 9 * face;
+        const xp = x * Airocean.INVERSE_ROTATION_MATRIX[off] + y * Airocean.INVERSE_ROTATION_MATRIX[off + 1] + z * Airocean.INVERSE_ROTATION_MATRIX[off + 2];
+        const yp = x * Airocean.INVERSE_ROTATION_MATRIX[off + 3] + y * Airocean.INVERSE_ROTATION_MATRIX[off + 4] + z * Airocean.INVERSE_ROTATION_MATRIX[off + 5];
+        const zp = x * Airocean.INVERSE_ROTATION_MATRIX[off + 6] + y * Airocean.INVERSE_ROTATION_MATRIX[off + 7] + z * Airocean.INVERSE_ROTATION_MATRIX[off + 8];
+
+        return [Math.atan2(yp, xp)/Airocean.TO_RADIANS, 90-Math.acos(zp)/Airocean.TO_RADIANS]
+
+    }
 
 }

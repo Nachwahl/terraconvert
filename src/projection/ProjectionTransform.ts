@@ -1,4 +1,5 @@
-import {GeographicProjection} from "./GeographicProjection";
+import GeographicProjection from "./GeographicProjection";
+
 
 export abstract class ProjectionTransform extends GeographicProjection {
     protected input: GeographicProjection;
