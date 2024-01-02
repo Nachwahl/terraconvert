@@ -1,7 +1,6 @@
 import {Airocean} from "./Airocean";
 import {InvertableVectorField} from "./InvertableVectorField";
-import * as fs from "fs";
-import * as path from "path";
+import {getConformalJSON} from "./resources/Conformal";
 
 export class ConformalEstimate extends Airocean {
     inverse: InvertableVectorField;
@@ -15,8 +14,7 @@ export class ConformalEstimate extends Airocean {
         const xs = new Array(sideLength + 1);
         const ys = new Array(xs.length);
 
-        const conformalRaw = fs.readFileSync(path.resolve(__dirname, 'resources/conformal.txt'))
-        const conformal = JSON.parse(conformalRaw.toString());
+        const conformal = getConformalJSON();
 
         let counter = -1;
 

@@ -39,6 +39,17 @@ export const fromGeo = (lat: number, lon: number): [number, number] => {
 }
 
 /**
+ * Converts real life coordinates to in-game coordinates, returns an object
+ * @param lat - Latitude
+ * @param lon - Longitude
+ * @returns {x: number, z: number} - In-game coordinates
+ */
+export const fromGeoObject = (lat: number, lon: number): {x: number, z: number} => {
+    const [x, z] = scaleProj.fromGeo(lon, lat);
+    return {x, z};
+}
+
+/**
  * Converts in-game coordinates to real life coordinates
  * @param x - Latitude
  * @param z - Longitude
@@ -47,6 +58,17 @@ export const fromGeo = (lat: number, lon: number): [number, number] => {
 export const toGeo = (x: number, z: number): [number, number] => {
     const [lon, lat] = scaleProj.toGeo(x, z);
     return [lat, lon];
+}
+
+/**
+ * Converts in-game coordinates to real life coordinates, returns an object
+ * @param x - Latitude
+ * @param z - Longitude
+ * @returns {lat: number, lon: number} - Real life coordinates [latitude, longitude]
+ */
+export const toGeoObject = (x: number, z: number): {lat: number, lon: number} => {
+    const [lon, lat] = scaleProj.toGeo(x, z);
+    return {lat, lon};
 }
 
 
